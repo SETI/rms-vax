@@ -9,9 +9,7 @@ description = "Routines for converting to and from vax dates"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
-    "numpy",
-    "pyparsing",
-    "rms-textkernel"
+    "numpy"
 ]
 license = {text = "Apache-2.0"}
 maintainers = [
