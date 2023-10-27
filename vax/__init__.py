@@ -118,6 +118,7 @@ def from_vax32(data):
     else:
         return ieee.reshape(newshape)
 
+
 def to_vax32_bytes(array):
     """Convert this number, array, or array-like into a byte string containing
     the binary representation of the equivalent Vax float4 or complex8 value(s).
@@ -129,10 +130,11 @@ def to_vax32_bytes(array):
 
     # Conversion involves multiplication by 4 and then a pairwise byte swap
     paired_view = (4. * np.atleast_1d(array)).view('<u2')
-    paired_view = paired_view.reshape((paired_view.size//2, 2))
+    paired_view = paired_view.reshape(-1, 2)
     swapped = paired_view[:,::-1].copy()
 
     return swapped.tobytes()
+
 
 def to_vax32(array):
     """Convert this number, array, or array-like into an array of Vax float4 or
