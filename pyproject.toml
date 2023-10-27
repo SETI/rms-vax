@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rms-vax"
 dynamic = ["version"]
-description = "Routines for converting to and from vax dates"
+description = "Routines for converting to and from vax single-precision floating-point values"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
