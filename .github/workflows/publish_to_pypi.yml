@@ -25,7 +25,7 @@ jobs:
 
       - name: Test
         run: |
-          python -m unittest vax
+          python -m pytest
 
       - name: Build
         run: |

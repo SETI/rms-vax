@@ -26,7 +26,7 @@ try:
 except ImportError as err:
     __version__ = 'Version unspecified'
 
-PYTHON2 = sys.version_info.major <= 2
+_PYTHON2 = sys.version_info.major <= 2
 
 
 def from_vax32(data):
@@ -41,7 +41,7 @@ def from_vax32(data):
     """
 
     # Convert a string to bytes; also handle a Python 2 buffer
-    if PYTHON2:
+    if _PYTHON2:
         if isinstance(data, (str, buffer)):     # pragma: no cover
             data = bytes(data)
     else:
@@ -50,7 +50,7 @@ def from_vax32(data):
 
     # Convert the object to a NumPy array with an even number of 2-byte elements
     if isinstance(data, (bytes, bytearray, memoryview)):
-        nbytes = 4*len(data) if isinstance(data, memoryview) else len(data)
+        nbytes = data.nbytes if isinstance(data, memoryview) else len(data)
         if nbytes % 4 != 0:
             raise ValueError('data size is not a multiple of 4 bytes')
 

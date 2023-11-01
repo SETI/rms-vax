@@ -36,7 +36,7 @@ jobs:
 
       - name: Test with coverage
         run: |
-          coverage run -m unittest vax
+          coverage run -m pytest
 
       - name: Upload coverage report to codecov
         uses: codecov/codecov-action@v3
