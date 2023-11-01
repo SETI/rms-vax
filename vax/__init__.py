@@ -1,352 +1,166 @@
-############################################################################
-# vax.py: Conversions between Vax single-precision floats IEEE floats
-############################################################################
+"""PDS Ring-Moon Systems Node, SETI Institute
+Module "vax"
 
-import sys
+Functions to convert between Vax single-precision floats and IEEE floats.
+
+from_vax32  Interpret this byte string, array, or array-like as Vax float4 or
+            complex8 values and return the equivalent single-precision IEEE
+            value(s).
+
+to_vax32    Convert this number, array, or array-like into an array of Vax
+            float4 or complex8 values with the same shape.
+
+to_vax32_bytes
+            Convert this number, array, or array-like into a byte string
+            containing the binary representation of the equivalent Vax
+            float4 or complex8 value(s).
+
+This module continues to support both Python 2 in addition to Python 3.
+"""
+
 import numpy as np
+import sys
 
 try:
     from _version import __version__
 except ImportError as err:
     __version__ = 'Version unspecified'
 
+_PYTHON2 = sys.version_info.major <= 2
 
-PYTHON2 = sys.version_info.major <= 2
 
 def from_vax32(data):
-    """Interprets an arbitrary byte string or NumPy array as Vax
-    single-precision floating-point binary values, and returns the equivalent
-    array as IEEE values.
+    """Interpret this byte string, array, or array-like as Vax float4 or
+    complex8 values and return the equivalent single-precision IEEE value(s).
+
+    If the input is an array, the shape of that array is preserved except for
+    the last axis, which may be modified account for the new itemsize.
+
+    If the input array is complex, the returned array will have dtype "<c8";
+    otherwise, it will have dtype "<f4".
     """
 
     # Convert a string to bytes; also handle a Python 2 buffer
-    if PYTHON2:
-        if isinstance(data, (str, buffer)):
+    if _PYTHON2:
+        if isinstance(data, (str, buffer)):     # pragma: no cover
             data = bytes(data)
     else:
         if isinstance(data, str):
             data = bytes(data, encoding='latin8')
 
-    # Handle memoryview
-    if isinstance(data, memoryview):
-        data = bytes(data)
-
-    # Convert the object to an even number of 2-byte elements
-    if isinstance(data, (bytes, bytearray)):
-        if len(data) % 4 != 0:
+    # Convert the object to a NumPy array with an even number of 2-byte elements
+    if isinstance(data, (bytes, bytearray, memoryview)):
+        nbytes = data.nbytes if isinstance(data, memoryview) else len(data)
+        if nbytes % 4 != 0:
             raise ValueError('data size is not a multiple of 4 bytes')
 
-        pairs = np.frombuffer(data, dtype='uint16')
-        pairs = pairs.reshape(pairs.size//2, 2)
-        newshape = (len(data) // 4,)    # array shape after conversion
-        scalar = (len(data) == 4)       # True to convert to scalar at the end
+        array = np.frombuffer(data, dtype='<f4')
+        scalar = (nbytes == 4)          # True to convert to scalar at the end
         shapeless = False
+        newshape = (nbytes // 4,)       # array shape after conversion
+        dtype = '<f4'
 
     else:
-        # Convert to array, or a single-element array for a scalar
-        scalar = not isinstance(data, np.ndarray)
-        if scalar:                      # True to convert back to scalar at end
-            array = np.array([data], dtype='<f4')
+        scalar = np.isscalar(data)      # True to return a scalar
+        array = np.asarray(data, order='C')
+        shapeless = array.shape == ()   # True to convert back to shape ()
+
+        array = np.atleast_1d(array)    # needed for the view to work below
+
+        # Validate array and array-like data types; convert to LSB
+        if isinstance(data, np.ndarray):
+            key = array.dtype.kind + str(array.dtype.itemsize)
+            if key not in {'f4', 'c8', 'u1', 'u2', 'u4', 'i1', 'i2', 'i4'}:
+                raise ValueError('invalid data type for array input: '
+                                 + str(array.dtype))
+            array = np.asarray(array, dtype='<' + key)
+            dtype = '<c8' if key == 'c8' else '<f4'
+
         else:
-            shapeless = data.shape == ()    # True to convert back to shape ()
-            if shapeless:
-                array = data.ravel().astype('<f4')
+            # Conversion of array-like produces arrays with dtype "f8" or "c16"
+            if array.dtype.kind == 'c':
+                array = np.asarray(array, dtype='<c8')
+                dtype = '<c8'
+            elif array.dtype.kind in 'uif':
+                array = np.asarray(array, dtype='<' + array.dtype.kind + '4')
+                dtype = '<f4'
             else:
-                array = data.astype('<f4')
-
-        if (array.size * array.itemsize) % 4 != 0:
-            raise ValueError('data size is not a multiple of 4 bytes')
-
-        pairs = array.view('uint16')
+                raise ValueError('invalid data type for array-like input: '
+                                 + str(array.dtype))
 
         # Determine array shape after conversion
-        if array.itemsize == 1:
-            if array.shape[-1] % 4 != 0:
+        if array.itemsize in (1,2):
+            if (array.shape[-1] * array.itemsize) % 4 != 0:
                 raise ValueError('last axis size is not a multiple of 4 bytes')
-            newshape = array.shape[:-1] + (array.shape[-1] // 4,)
 
-        elif array.itemsize == 2:
-            if array.shape[-1] % 2 != 0:
-                raise ValueError('last axis size is not a multiple of 4 bytes')
-            newshape = array.shape[:-1] + (array.shape[-1] // 2,)
-
-        elif array.itemsize == 4:
-            newshape = array.shape + (1,)
+            last_axis = (array.shape[-1] * array.itemsize) // 4
+            if last_axis == 1:
+                newshape = array.shape[:-1]
+            else:
+                newshape = array.shape[:-1] + (last_axis,)
 
         else:
-            newshape = array.shape + (array.itemsize//4,)
+            newshape = array.shape
 
-        if newshape[-1] == 1:
-            newshape = newshape[:-1]
+    itemsize = 8 if dtype == '<c8' else 4
 
-    # Perform a pairwise swap of the two-byte elements
-    pairs = pairs.reshape(newshape + (2,))
-    swapped = np.empty(pairs.shape, dtype='uint16')
-    swapped[...,:] = pairs[...,::-1]
-
-    # The results are in LSB IEEE format aside from a scale factor of four
-    ieee = swapped.view('<f4') / 4.
+    # Conversion involves a pairwise swap of bytes and then division by 4
+    pairs = array.view(dtype='<u2')
+    pairs = pairs.reshape(-1, 2)
+    swapped = pairs[:,::-1].copy()
+    swapped = swapped.reshape(-1, itemsize//2)
+    ieee = swapped.view(dtype=dtype) / 4.
 
     if scalar:
-        return ieee[0,0]            # current shape is (1,1)
+        return ieee[0,0]                # current shape is (1,1)
     elif shapeless:
         return ieee.reshape(())
     else:
         return ieee.reshape(newshape)
 
+
 def to_vax32_bytes(array):
-    """Converts an arbitrary array of numbers into Vax single precision and
-    returns the resulting array as a byte string.
+    """Convert this number, array, or array-like into a byte string containing
+    the binary representation of the equivalent Vax float4 or complex8 value(s).
     """
 
-    pre_swapped = (4. * array).ravel().astype('<f4')
-    paired_view = pre_swapped.view('uint16')
+    # Make array contiguous, with C index order, containing 4-byte IEEE floats
+    dtype = '<c8' if np.iscomplexobj(array) else '<f4'
+    array = np.asarray(array, dtype=dtype, order='C')
 
-    paired_view = paired_view.reshape((paired_view.size//2, 2))
+    # Conversion involves multiplication by 4 and then a pairwise byte swap
+    paired_view = (4. * np.atleast_1d(array)).view('<u2')
+    paired_view = paired_view.reshape(-1, 2)
     swapped = paired_view[:,::-1].copy()
 
     return swapped.tobytes()
 
+
 def to_vax32(array):
-    """Converts an arbitrary array of numbers into Vax single precision, and
-    then returns an array of the same shape. Note that the numeric values in the
-    array will not be usable.
+    """Convert this number, array, or array-like into an array of Vax float4 or
+    complex8 values with the same shape.
+
+    If the input is a scalar, the returned object is an array of shape ().
+
+    If the input is complex, the returned array will be of dtype "<c8";
+    otherwise, it will be of dtype "<f4".
+
+    Note that this object will not be usable for arithmetic operations in its
+    returned form.
     """
 
-    scalar = not isinstance(array, np.ndarray)
-    if scalar:                      # True to convert back to scalar at end
-        array = np.array([array], dtype='<f4')
-    else:
-        array = array.astype('<f4')
+    # Make array contiguous, with C index order, containing 4-byte IEEE floats
+    dtype = '<c8' if np.iscomplexobj(array) else '<f4'
+    scalar = np.isscalar(array)
+    array = np.asarray(array, dtype=dtype, order='C')
 
-    data = to_vax32_bytes(array)
-    output = np.frombuffer(data, dtype='<f4')
+    # Construct array from converted buffer
+    buffer = to_vax32_bytes(array)
+    result = np.frombuffer(buffer, dtype=dtype).reshape(array.shape)
 
     if scalar:
-        return output[0]
+        return result[()]
     else:
-        return output.reshape(array.shape)
-
-################################################################################
-# UNIT TESTS
-################################################################################
-
-import unittest
-
-class Test_Vax(unittest.TestCase):
-
-  def runTest(self):
-
-    BIGINT = 2**24      # all conversions should be good to at least 24 bits
-    SCALE = 1. / BIGINT
-    EXPMIN = -125
-    EXPMAX = 127
-
-    # Single-value inversion tests
-
-    for k in range(1000):
-        mantissa = np.random.randint(-BIGINT, BIGINT) * SCALE
-        exponent = np.random.randint(EXPMIN, EXPMAX)
-        ieee = mantissa * 2.**exponent
-
-        # Scalar
-        result = from_vax32(to_vax32(ieee))
-        self.assertEqual(result, ieee)
-        self.assertTrue(np.isscalar(result))
-        self.assertTrue(isinstance(result, np.float32))
-
-        # Shapeless array
-        arg = np.array(ieee, dtype='<f4')
-        result = from_vax32(to_vax32(arg))
-        self.assertEqual(result, arg)
-        self.assertFalse(np.isscalar(result))
-        self.assertTrue(isinstance(result, np.ndarray))
-        self.assertTrue(result.shape == ())
-        self.assertTrue(result.dtype == np.dtype('<f4'))
-
-        # Array of shape (1,)
-        arg = np.array([ieee], dtype='<f4')
-        result = from_vax32(to_vax32(arg))
-        self.assertTrue(np.all(result == arg))
-        self.assertFalse(np.isscalar(result))
-        self.assertTrue(isinstance(result, np.ndarray))
-        self.assertTrue(result.shape == (1,))
-        self.assertTrue(result.dtype == np.dtype('<f4'))
-
-        # Array of shape (1,1)
-        arg = np.array([[ieee]], dtype='<f4')
-        result = from_vax32(to_vax32(arg))
-        self.assertTrue(np.all(result == arg))
-        self.assertFalse(np.isscalar(result))
-        self.assertTrue(isinstance(result, np.ndarray))
-        self.assertTrue(result.shape == (1,1))
-        self.assertTrue(result.dtype == np.dtype('<f4'))
-
-    # Array inversion tests
-    for k in range(10):
-        for shape in [(7,), (7,7), (7,7,7), (4,1), (4,2), (4,3),
-                      (3,), (3,1), (3,1,1), (1,3), (1,3,1), (1,1,3),
-                      (1,3,1,1,1,1)]:
-            mantissa = np.random.randint(-BIGINT, BIGINT, size=shape) * SCALE
-            exponent = np.random.randint(EXPMIN, EXPMAX, size=shape)
-            ieee = (mantissa * 2.**exponent).astype('<f4')
-
-            result = from_vax32(to_vax32(ieee))
-            self.assertTrue(isinstance(result, np.ndarray))
-            self.assertTrue(result.shape == ieee.shape)
-            self.assertTrue(result.dtype == np.dtype('<f4'))
-            self.assertTrue(np.all(result == ieee))
-
-    # Single-value buffer, memoryview, bytes, bytearray, str
-    for k in range(100):
-        mantissa = np.random.randint(-BIGINT, BIGINT) * SCALE
-        exponent = np.random.randint(EXPMIN, EXPMAX)
-        ieee = mantissa * 2.**exponent
-
-        # buffer (Python 2) or memoryview (Python 3)
-        vax32 = to_vax32(ieee)
-        result = from_vax32(vax32.data)
-        self.assertTrue(np.isscalar(result))
-        self.assertEqual(result, ieee)
-
-        # bytes
-        result = from_vax32(bytes(vax32.data))
-        self.assertTrue(np.isscalar(result))
-        self.assertEqual(result, ieee)
-
-        # bytearray
-        result = from_vax32(bytearray(vax32.data))
-        self.assertTrue(np.isscalar(result))
-        self.assertEqual(result, ieee)
-
-        # string
-        if PYTHON2:
-            result = from_vax32(str(vax32.data))
-        else:
-            result = from_vax32(str(vax32.data, encoding='latin8'))
-        self.assertTrue(np.isscalar(result))
-        self.assertEqual(result, ieee)
-
-    # Multiple-value buffer, memoryview, bytes, bytearray, str
-    for k in range(100):
-        size = np.random.randint(2,21)
-        mantissa = np.random.randint(-BIGINT, BIGINT, size=size) * SCALE
-        exponent = np.random.randint(EXPMIN, EXPMAX, size=size)
-        ieee = (mantissa * 2.**exponent).astype('<f4')
-
-        # buffer (Python 2) or memoryview (Python 3)
-        vax32 = to_vax32(ieee)
-        result = from_vax32(vax32.data)
-        self.assertTrue(result.shape == ieee.shape)
-        self.assertTrue(np.all(result == ieee))
-
-        # bytes
-        result = from_vax32(bytes(vax32.data))
-        self.assertTrue(result.shape == ieee.shape)
-        self.assertTrue(np.all(result == ieee))
-
-        # bytearray
-        result = from_vax32(bytearray(vax32.data))
-        self.assertTrue(result.shape == ieee.shape)
-        self.assertTrue(np.all(result == ieee))
-
-        # string
-        if PYTHON2:
-            result = from_vax32(str(vax32.data))
-        else:
-            result = from_vax32(str(vax32.data, encoding='latin8'))
-        self.assertTrue(result.shape == ieee.shape)
-        self.assertTrue(np.all(result == ieee))
-
-    # Try some real-world Vax data from
-    #   VGISS_5xxx/VGISS_5214/CALIB/MIPL/VGRSCF.DAT
-    #
-    # array = np.fromfile('.../VGRSCF.DAT', dtype='uint8')[780:]
-
-    uints = np.array([
-       104,  64,  39,  49,  96,  64, 156, 196,  60,  64,   8, 172, 128,
-        64,   0,   0, 125,  64,  27,  47, 128,  64,   0,   0, 131,  64,
-        10, 215,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0, 110,  64,   4,  86,  77,  64,
-       242, 210, 128,  64,   0,   0, 134,  64,  25,   4, 110,  64,   4,
-        86, 132,  64,  88,  57, 132,  64,  88,  57,   8,  65, 176, 114,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,  32,  54,  47,  49,  53,  47,  56,  53,
-       128,  64,   0,   0, 136,  64,  57, 180, 130,  64, 229, 208, 101,
-        64, 203, 161, 128,  64,   0,   0, 128,  64,  78,  98, 128,  64,
-         0,   0, 125,  64,  27,  47,  86,  65, 123,  20, 100,  65, 166,
-       155,  90,  65, 131, 192,  64,  65,   0,   0, 128,  64,   0,   0,
-        86,  65,  82, 184,  86,  65, 123,  20,  83,  65,  70, 182,  88,
-        66,  53,  94, 103,  66, 111,  18,  93,  66, 184,  30,  66,  66,
-       123,  20, 128,  64,   0,   0,  89,  66,  12,   2,  88,  66,  53,
-        94,  85,  66, 231, 251,  88,  66,  53,  94, 103,  66, 111,  18,
-        93,  66, 184,  30,  66,  66, 123,  20, 128,  64,   0,   0,  89,
-        66,  12,   2,  88,  66,  53,  94,  85,  66, 231, 251, 105,  64,
-        94, 186,  98,  64, 211,  77, 128,  64,   0,   0, 118,  64,  25,
-         4, 105,  64,  94, 186, 129,  64, 252, 169, 129,  64, 252, 169,
-        73,  65, 252, 169,  67,  65, 188, 116,  61,  65, 125,  63,  86,
-        65, 123,  20,  77,  65, 143, 194,  67,  65, 188, 116,  88,  65,
-       254, 212,  88,  65, 254, 212,  40,  66, 215, 163,  69,  66,  55,
-       137,  63,  66, 150,  67,  88,  66,  53,  94,  79,  66, 231, 251,
-        69,  66,  55, 137,  91,  66,   2,  43,  91,  66,   2,  43,  42,
-        67, 170, 113,  69,  66,  55, 137,  63,  66, 150,  67,  88,  66,
-        53,  94,  79,  66, 231, 251,  69,  66,  55, 137,  91,  66,   2,
-        43,  91,  66,   2,  43,  42,  67, 170, 113, 128,  64,   0,   0,
-       104,  64,  39,  49,  96,  64, 156, 196,  60,  64,   8, 172, 128,
-        64,   0,   0, 125,  64,  27,  47, 128,  64,   0,   0, 131,  64,
-        10, 215,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0, 110,  64,   4,  86,  77,  64,
-       242, 210, 128,  64,   0,   0, 134,  64,  25,   4, 110,  64,   4,
-        86, 132,  64,  88,  57, 132,  64,  88,  57,   8,  65, 176, 114,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-         0,   0,   0,   0,   0,  32,  50,  47,  48,  50,  47,  56,  54],
-      dtype='uint8')
-
-    ieee = from_vax32(uints)
-    truth = np.array([1.   , 1.068, 1.022, 0.897, 1.   , 1.003, 1.   , 0.989])
-    print(truth.astype('<f4').dtype)
-    print(ieee.dtype)
-    print(truth.astype('<f4'))
-    print(ieee[65:73])
-
-    self.assertTrue(np.all(truth.astype('<f4') == ieee[65:73]))
-
-    truth = np.array([3.345, 3.572, 3.418, 3.   , 1.   , 3.355, 3.345, 3.308])
-    self.assertTrue(np.all(truth.astype('<f4') == ieee[73:81]))
-
-    truth = np.array([13.523, 14.442, 13.82 , 12.13 ,  1.   , 13.563, 13.523, 13.374])
-    self.assertTrue(np.all(truth.astype('<f4') == ieee[81:89]))
-    self.assertTrue(np.all(truth.astype('<f4') == ieee[89:97]))
-
-################################################################################
-# Perform unit testing if executed from the command line
-################################################################################
-
-if __name__ == "__main__":
-    unittest.main()
+        return result
 
 ################################################################################

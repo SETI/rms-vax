@@ -8,4 +8,4 @@ PDS Ring-Moon Systems Node, SETI Institute
 
 Supported versions: Python >= 3.7
 
-Conversions between Vax single-precision floats IEEE floats.
+Conversions between Vax single-precision floats and IEEE floats.
