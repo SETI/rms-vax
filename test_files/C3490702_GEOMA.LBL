@@ -1,0 +1,216 @@
+PDS_VERSION_ID                  = PDS3
+
+DATA_SET_ID                     = "VG1/VG2-S-ISS-2/3/4/6-PROCESSED-V1.1"
+PRODUCT_CREATION_TIME           = 2012-05-01T16:00:00
+PRODUCT_ID                      = "C3490702_GEOMA.DAT"
+SOURCE_PRODUCT_ID               = "C3490702_RAW.IMG"
+PRODUCT_TYPE                    = TIEPOINT_TABLE
+
+/* Image Description  */
+
+INSTRUMENT_HOST_NAME            = "VOYAGER 1"
+INSTRUMENT_HOST_ID              = VG1
+INSTRUMENT_NAME                 = "IMAGING SCIENCE SUBSYSTEM - WIDE ANGLE"
+INSTRUMENT_ID                   = "ISSW"
+MISSION_PHASE_NAME              = "SATURN ENCOUNTER"
+TARGET_NAME                     = "SATURN"
+IMAGE_ID                        = "1386S1-002"
+IMAGE_NUMBER                    = "34907.02"
+IMAGE_TIME                      = 1980-11-11T18:08:34.00
+EARTH_RECEIVED_TIME             = 1980-11-11T19:35:46
+SCAN_MODE_ID                    = "3:1"
+SHUTTER_MODE_ID                 = "BOTSIM"
+GAIN_MODE_ID                    = "LOW"
+EDIT_MODE_ID                    = "1:1"
+FILTER_NAME                     = "BLUE"
+FILTER_NUMBER                   = "1"
+EXPOSURE_DURATION               = 0.360 <SECOND>
+
+START_TIME                      = 1980-11-11T18:08:33.64
+STOP_TIME                       = 1980-11-11T18:08:34.00
+SPACECRAFT_CLOCK_START_COUNT    = "34906:58:794"
+SPACECRAFT_CLOCK_STOP_COUNT     = "34907:02:001"
+
+NOTE                            = "NONE"
+
+/* Label for VICAR-format file */
+
+OBJECT                          = VICAR_FILE
+  FILE_NAME                     = "C3490702_GEOMA.DAT"
+  RECORD_TYPE                   = FIXED_LENGTH
+  RECORD_BYTES                  = 512
+  FILE_RECORDS                  = 23
+  ^VICAR_HEADER                 = ("C3490702_GEOMA.DAT", 1)
+  ^BINARY_TABLE                 = ("C3490702_GEOMA.DAT", 1557 <BYTES>)
+  ^VICAR_EXTENSION_HEADER       = ("C3490702_GEOMA.DAT", 22)
+
+  DESCRIPTION                   = "This file contains a table of the tiepoints
+used to geometrically correct Voyager image C3490702_GEOMED.IMG from
+calibrated image C3490702_CALIB.IMG. Tiepoints are organized in sets of four:
+output line, output sample, input line, and input sample. The file was used as
+an input to VICAR program GEOMA. The table has 552 rows, each containing the
+four values in single-precision binary format. The table is padded at the end
+with 24 unused rows to match the record length of the file. Note that line and
+sample values typically range from 1 to 800, although some reseau markings can
+fall outside these limits.
+
+This file was generated using VICAR program RESLOC, running on a Compaq Alpha
+under OpenVMS. This file is in Vax binary floating-point format; for
+convenience, the same table of tiepoints can be found in ASCII format in
+file C3490702_GEOMA.TAB.
+
+Note: This file is provided primarily to document the processing history of
+the images; users wishing to interpret this file will need to consult the
+documentation and source code for VICAR program GEOMA. See file
+DOCUMENT/PROCESSING.TXT for more information about the image processing."
+
+  OBJECT                        = VICAR_HEADER
+    HEADER_TYPE                 = VICAR
+    BYTES                       = 1536
+    RECORDS                     = 3
+    INTERCHANGE_FORMAT          = ASCII
+    DESCRIPTION                 = "VICAR format label for the file."
+  END_OBJECT                    = VICAR_HEADER
+
+  OBJECT                        = BINARY_TABLE
+    INTERCHANGE_FORMAT          = BINARY
+    ROWS                        = 552
+    COLUMNS                     = 4
+    ROW_BYTES                   = 16
+
+    OBJECT                      = COLUMN
+      NAME                      = OUTPUT_LINE
+      START_BYTE                = 1
+      BYTES                     = 4
+      DATA_TYPE                 = VAX_REAL
+      DESCRIPTION               = "Line coordinate (generally 1-800) of the
+geometrically correct location of this reseau marking. Note that the output
+image is expanded to 1000x1000 pixels, so the final positions of these
+reseau markings are scaled accordingly."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = OUTPUT_SAMPLE
+      START_BYTE                = 5
+      BYTES                     = 8
+      DATA_TYPE                 = VAX_REAL
+      DESCRIPTION               = "Sample coordinate (generally 1-800) of the
+geometrically correct location of this reseau marking. Note that the output
+image is expanded to 1000x1000 pixels, so the final positions of these
+reseau markings are scaled accordingly."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = INPUT_LINE
+      START_BYTE                = 9
+      BYTES                     = 4
+      DATA_TYPE                 = VAX_REAL
+      DESCRIPTION               = "Line coordinate (generally 1-800) of the
+derived center location of this reseau marking in the original raw image."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = INPUT_SAMPLE
+      START_BYTE                = 13
+      BYTES                     = 8
+      DATA_TYPE                 = VAX_REAL
+      DESCRIPTION               = "Sample coordinate (generally 1-800) of the
+derived center location of this reseau marking in the original raw image."
+    END_OBJECT                  = COLUMN
+
+  END_OBJECT                    = BINARY_TABLE
+
+  OBJECT                        = VICAR_EXTENSION_HEADER
+    HEADER_TYPE                 = VICAR
+    BYTES                       = 1024
+    RECORDS                     = 2
+    INTERCHANGE_FORMAT          = ASCII
+    DESCRIPTION                 = "Continuation of the VICAR header."
+  END_OBJECT                    = VICAR_EXTENSION_HEADER
+
+END_OBJECT                      = VICAR_FILE
+
+/* Label for derived ASCII-format file */
+
+OBJECT                          = ASCII_TABLE_FILE
+  FILE_NAME                     = "C3490702_GEOMA.TAB"
+  RECORD_TYPE                   = FIXED_LENGTH
+  RECORD_BYTES                  = 37
+  FILE_RECORDS                  = 552
+  ^TABLE                        = ("C3490702_GEOMA.TAB", 1)
+
+  DESCRIPTION                   = "This is a table of the tiepoints used to
+geometrically correct Voyager image C3490702_GEOMED.IMG from calibrated image
+C3490702_CALIB.IMG. Tiepoints are organized in rows of four columns: output
+line, output sample, input line, and input sample. The corresponding binary
+file C3490702_GEOMA.DAT was used as an input to VICAR program GEOMA. This file
+contains the same table but has been converted to ASCII text format for users'
+convenience.
+
+Note: This file is provided primarily to document the processing history of
+the images. See file DOCUMENT/PROCESSING.TXT for more information about the
+image processing."
+
+  OBJECT                        = TABLE
+    INTERCHANGE_FORMAT          = ASCII
+    ROWS                        = 552
+    COLUMNS                     = 5
+    ROW_BYTES                   = 37
+
+    OBJECT                      = COLUMN
+      NAME                      = ROW_NUMBER
+      START_BYTE                = 1
+      BYTES                     = 3
+      DATA_TYPE                 = ASCII_INTEGER
+      FORMAT                    = "I3"
+      DESCRIPTION               = "The row number in the file, 1-552."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = OUTPUT_LINE
+      START_BYTE                = 5
+      BYTES                     = 6
+      DATA_TYPE                 = ASCII_REAL
+      FORMAT                    = "F6.2"
+      DESCRIPTION               = "Line coordinate (generally 1-800) of the
+geometrically correct location of this reseau marking. Note that the output
+image is expanded to 1000x1000 pixels, so the final positions of these
+reseau markings are scaled accordingly."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = OUTPUT_SAMPLE
+      START_BYTE                = 12
+      BYTES                     = 6
+      DATA_TYPE                 = ASCII_REAL
+      FORMAT                    = "F6.2"
+      DESCRIPTION               = "Sample coordinate (generally 1-800) of the
+geometrically correct location of this reseau marking. Note that the output
+image is expanded to 1000x1000 pixels, so the final positions of these
+reseau markings are scaled accordingly."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = INPUT_LINE
+      START_BYTE                = 19
+      BYTES                     = 8
+      DATA_TYPE                 = ASCII_REAL
+      FORMAT                    = "F8.4"
+      DESCRIPTION               = "Line coordinate (generally 1-800) of the
+derived center location of this reseau marking in the original raw image."
+    END_OBJECT                  = COLUMN
+
+    OBJECT                      = COLUMN
+      NAME                      = INPUT_SAMPLE
+      START_BYTE                = 28
+      BYTES                     = 8
+      DATA_TYPE                 = ASCII_REAL
+      FORMAT                    = "F8.4"
+      DESCRIPTION               = "Sample coordinate (generally 1-800) of the
+derived center location of this reseau marking in the original raw image."
+    END_OBJECT                  = COLUMN
+
+  END_OBJECT                    = TABLE
+END_OBJECT                      = ASCII_TABLE_FILE
+
+END

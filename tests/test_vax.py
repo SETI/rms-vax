@@ -3,6 +3,7 @@
 ################################################################################
 
 import numpy as np
+import os
 import unittest
 import sys
 from vax import from_vax32, to_vax32
@@ -281,4 +282,33 @@ class Test_Vax(unittest.TestCase):
     self.assertRaises(ValueError, from_vax32, np.array(['123', '456']))
     self.assertRaises(ValueError, from_vax32, ['123', '456'])
 
-################################################################################
+    # Reading from a file...
+    vax_dir = os.path.split(sys.modules['vax'].__file__)[0]
+    parent = os.path.split(vax_dir)[0]
+    test_file = os.path.join(parent, 'test_files', 'C3490702_GEOMA.DAT')
+    data = np.fromfile(test_file, dtype='<f4')
+    data = data[1536//4:]       # skip LBLSIZE
+    data = from_vax32(data)
+    data = data.reshape(-1,4)   # four columns
+
+    answer_10 = np.array([
+        [ 25.36      ,  25.31      ,   9.831727  ,  15.862788  ],
+        [ 25.36      ,  25.31      ,   9.831727  ,  15.862788  ],
+        [ 20.53      ,  85.59      ,   2.6002007 ,  60.86287   ],
+        [ 20.53      ,  85.59      ,   2.6002007 ,  60.86287   ],
+        [ 25.36      , 177.6       ,   3.0882928 , 133.30754   ],
+        [ 25.36      , 177.6       ,   3.0882928 , 133.30754   ],
+        [ 25.36      , 269.74      ,   1.6376413 , 208.92227   ],
+        [ 25.36      , 269.74      ,   1.6376413 , 208.92227   ],
+        [ 25.36      , 362.04      ,   0.71304405, 285.84558   ],
+        [ 25.36      , 362.04      ,   0.71304405, 285.84558   ]], dtype='float32')
+    self.assertTrue(np.all(answer_10 == data[:10]))
+
+##########################################################################################
+# Perform unit testing if executed from the command line
+##########################################################################################
+
+if __name__ == "__main__":
+    unittest.main()     # pragma: no cover
+
+##########################################################################################

@@ -1,19 +1,10 @@
+################################################################################
+# vax/__init__.py
+################################################################################
 """PDS Ring-Moon Systems Node, SETI Institute
-Module "vax"
+Vax Floating-Point Conversion Tools
 
 Functions to convert between Vax single-precision floats and IEEE floats.
-
-from_vax32  Interpret this byte string, array, or array-like as Vax float4 or
-            complex8 values and return the equivalent single-precision IEEE
-            value(s).
-
-to_vax32    Convert this number, array, or array-like into an array of Vax
-            float4 or complex8 values with the same shape.
-
-to_vax32_bytes
-            Convert this number, array, or array-like into a byte string
-            containing the binary representation of the equivalent Vax
-            float4 or complex8 value(s).
 
 This module continues to support both Python 2 in addition to Python 3.
 """
@@ -30,8 +21,8 @@ _PYTHON2 = sys.version_info.major <= 2
 
 
 def from_vax32(data):
-    """Interpret this byte string, array, or array-like as Vax float4 or
-    complex8 values and return the equivalent single-precision IEEE value(s).
+    """Interpret this byte string, array, or array-like as Vax float32 or
+    complex64 values and return the equivalent single-precision IEEE value(s).
 
     If the input is an array, the shape of that array is preserved except for
     the last axis, which may be modified account for the new itemsize.
@@ -121,7 +112,8 @@ def from_vax32(data):
 
 def to_vax32_bytes(array):
     """Convert this number, array, or array-like into a byte string containing
-    the binary representation of the equivalent Vax float4 or complex8 value(s).
+    the binary representation of the equivalent Vax float32 or complex64
+    value(s).
     """
 
     # Make array contiguous, with C index order, containing 4-byte IEEE floats
@@ -137,8 +129,8 @@ def to_vax32_bytes(array):
 
 
 def to_vax32(array):
-    """Convert this number, array, or array-like into an array of Vax float4 or
-    complex8 values with the same shape.
+    """Convert this number, array, or array-like into an array of Vax float32 or
+    complex64 values with the same shape.
 
     If the input is a scalar, the returned object is an array of shape ().
 
