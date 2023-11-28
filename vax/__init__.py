@@ -7,7 +7,7 @@ Vax Floating-Point Conversion Tools
 Functions to convert between Vax single- and double-precision floats and IEEE
 floats.
 
-This module continues to support both Python 2 in addition to Python 3.
+This module continues to support Python 2 in addition to Python 3.
 
 Conversions to/from Vax single precision is supported. However, only conversions
 from Vax doubles to IEEE doubles are supported, not the reverse.
