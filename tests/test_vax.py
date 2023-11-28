@@ -6,14 +6,15 @@ import numpy as np
 import os
 import unittest
 import sys
-from vax import from_vax32, to_vax32
+from vax import from_vax32, to_vax32, from_vax64
+
 
 PYTHON2 = sys.version_info.major <= 2
 
 
 class Test_Vax(unittest.TestCase):
 
-  def runTest(self):
+  def test_vax32(self):
 
     np.random.seed(4744)
 
@@ -303,6 +304,179 @@ class Test_Vax(unittest.TestCase):
         [ 25.36      , 362.04      ,   0.71304405, 285.84558   ],
         [ 25.36      , 362.04      ,   0.71304405, 285.84558   ]], dtype='float32')
     self.assertTrue(np.all(answer_10 == data[:10]))
+
+    # Tests copied from libvaxdata
+    vax_f4 = np.array(
+        [0x80, 0x40, 0x00, 0x00,
+         0x80, 0xC0, 0x00, 0x00,
+         0x60, 0x41, 0x00, 0x00,
+         0x60, 0xC1, 0x00, 0x00,
+         0x49, 0x41, 0xD0, 0x0F,
+         0x49, 0xC1, 0xD0, 0x0F,
+         0xF0, 0x7D, 0xC2, 0xBD,
+         0xF0, 0xFD, 0xC2, 0xBD,
+         0x08, 0x03, 0xEA, 0x1C,
+         0x08, 0x83, 0xEA, 0x1C,
+         0x9E, 0x40, 0x52, 0x06,
+         0x9E, 0xC0, 0x52, 0x06],
+        dtype='uint8').reshape(-1,4)
+
+    ieee_f4 = np.array([
+       1.000000    ,
+      -1.000000    ,
+       3.500000    ,
+      -3.500000    ,
+       3.141590    ,
+      -3.141590    ,
+      9.9999999E+36,
+     -9.9999999E+36,
+      9.9999999E-38,
+     -9.9999999E-38,
+       1.234568    ,
+      -1.234568    ], dtype='float32')
+
+    diff = np.abs((from_vax32(vax_f4) - ieee_f4) / ieee_f4)
+    self.assertEqual(np.median(diff), 0.)
+    self.assertTrue(np.all(diff < 1.e-7))
+    answer = from_vax32(vax_f4)
+
+    self.assertTrue(np.all(from_vax32(bytes(vax_f4.data)) == answer))
+
+    if not PYTHON2:
+        string = bytes(vax_f4.data).decode('latin8')
+        self.assertTrue(np.all(from_vax32(string) == answer))
+
+    ints = vax_f4.view('<i2')
+    self.assertTrue(np.all(from_vax32(ints) == answer))
+
+    ints = vax_f4.view('>i2')
+    self.assertTrue(np.all(from_vax32(ints) == answer))
+
+    ints = vax_f4.view('<i4').reshape(-1)
+    self.assertTrue(np.all(from_vax32(ints) == answer))
+
+    ints = vax_f4.view('>i4').reshape(-1)
+    self.assertTrue(np.all(from_vax32(ints) == answer))
+
+    floats = vax_f4.view('<f4').reshape(-1)
+    self.assertTrue(np.all(from_vax32(floats) == answer))
+
+    floats = vax_f4.view('>f4').reshape(-1)
+    self.assertTrue(np.all(from_vax32(floats) == answer))
+
+    comps = vax_f4.reshape(-1,8).view('<c8').reshape(-1)
+    ieee_c8 = answer.view('<c8')
+    self.assertTrue(np.all(from_vax32(comps) == ieee_c8))
+
+    comps = vax_f4.reshape(-1,8).view('>c8').reshape(-1)
+    self.assertTrue(np.all(from_vax32(comps) == ieee_c8))
+
+    floats = vax_f4.view('=f4').reshape(-1)
+    for k,x in enumerate(floats):
+        self.assertEqual(from_vax32(x), answer[k])
+
+    comps = vax_f4.reshape(-1,8).view('=c8').reshape(-1)
+    for k,x in enumerate(comps):
+        self.assertEqual(from_vax32(x), ieee_c8[k])
+
+
+  def test_vax64(self):
+
+    # Tests copied from libvaxdata
+    vax_d8 = np.array(
+        [0x80, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x80, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x60, 0x41, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x60, 0xC1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x49, 0x41, 0xDA, 0x0F, 0x21, 0xA2, 0xBE, 0x68,
+         0x49, 0xC1, 0xDA, 0x0F, 0x21, 0xA2, 0xBE, 0x68,
+         0xF0, 0x7D, 0xC2, 0xBD, 0xBB, 0x1A, 0xDB, 0x48,
+         0xF0, 0xFD, 0xC2, 0xBD, 0xBB, 0x1A, 0xDB, 0x48,
+         0x08, 0x03, 0xEA, 0x1C, 0x54, 0x14, 0x75, 0x5C,
+         0x08, 0x83, 0xEA, 0x1C, 0x54, 0x14, 0x75, 0x5C,
+         0x9E, 0x40, 0x52, 0x06, 0x62, 0x14, 0xE7, 0xCE,
+         0x9E, 0xC0, 0x52, 0x06, 0x62, 0x14, 0xE7, 0xCE],
+        dtype='uint8').reshape(-1,8)
+
+    ieee_f8 = np.array([
+        1.000000000000000    ,
+       -1.000000000000000    ,
+        3.500000000000000    ,
+       -3.500000000000000    ,
+        3.141592653589793    ,
+       -3.141592653589793    ,
+       1.0000000000000000E+37,
+      -1.0000000000000000E+37,
+       9.9999999999999999E-38,
+      -9.9999999999999999E-38,
+        1.234567890123450    ,
+       -1.234567890123450    ], dtype='float64')
+
+    diff = np.abs((from_vax64(vax_d8) - ieee_f8) / ieee_f8)
+    self.assertTrue(np.all(from_vax64(vax_d8) == ieee_f8))
+
+    self.assertTrue(np.all(from_vax64(vax_d8.data) == ieee_f8))
+
+    self.assertTrue(np.all(from_vax64(bytes(vax_d8.data)) == ieee_f8))
+
+    if not PYTHON2:
+        string = bytes(vax_d8.data).decode('latin8')
+        self.assertTrue(np.all(from_vax64(string) == ieee_f8))
+
+    ints = vax_d8.view('<i2')
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('>i2')
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('<i4')
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('>i4')
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('<i8').reshape(-1)
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('>i8').reshape(-1)
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    floats = vax_d8.view('<f8').reshape(-1)
+    self.assertTrue(np.all(from_vax64(floats) == ieee_f8))
+
+    floats = vax_d8.view('>f8').reshape(-1)
+    self.assertTrue(np.all(from_vax64(floats) == ieee_f8))
+
+    comps = vax_d8.reshape(-1,16).view('<c16').reshape(-1)
+    ieee_c16 = ieee_f8.view('<c16')
+    self.assertTrue(np.all(from_vax64(comps) == ieee_c16))
+
+    comps = vax_d8.reshape(-1,16).view('>c16').reshape(-1)
+    self.assertTrue(np.all(from_vax64(comps) == ieee_c16))
+
+    floats = vax_d8.view('=f8').reshape(-1)
+    for k,x in enumerate(floats):
+        self.assertEqual(from_vax64(x), ieee_f8[k])
+
+    for k,x in enumerate(floats):
+        self.assertEqual(from_vax64(np.array(x)), np.array(ieee_f8[k]))
+
+    comps = vax_d8.reshape(-1,16).view('=c16').reshape(-1)
+    for k,x in enumerate(comps):
+        self.assertEqual(from_vax64(x), ieee_c16[k])
+
+    ints = vax_d8.view('>i2').reshape(-1,4)
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8))
+
+    ints = vax_d8.view('>i2').reshape(-1,8)
+    self.assertTrue(np.all(from_vax64(ints) == ieee_f8.reshape(-1,2)))
+
+    # Errors
+    self.assertRaises(ValueError, from_vax64, b'1')
+    self.assertRaises(ValueError, from_vax64, np.array(['123', '456']))
+    self.assertRaises(ValueError, from_vax64, ['123', '456'])
+    self.assertRaises(ValueError, from_vax64, vax_d8.reshape(-1)[:7])
+    self.assertRaises(ValueError, from_vax64, vax_d8[:,:4])
 
 ##########################################################################################
 # Perform unit testing if executed from the command line
