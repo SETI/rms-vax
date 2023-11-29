@@ -10,6 +10,6 @@ Supported versions: Python >= 3.7
 
 Conversions between Vax floats and IEEE floats.
 
-Conversions to/from Vax single precision is supported. However, only conversions
+Conversions to/from Vax single precision are supported. However, only conversions
 from Vax doubles to IEEE doubles is supported, not the reverse.
 
