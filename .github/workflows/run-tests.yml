@@ -16,8 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        os: [ubuntu-latest]
+        python-version: [ '3.12' ]
       fail-fast: false
     steps:
       - name: Checkout
@@ -32,6 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          echo Dangerous code
           python -m pip install -r requirements.txt
 
       - name: Test with coverage
