@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-	  echo Dangerous code
+	        echo Dangerous code
           python -m pip install -r requirements.txt
 
       - name: Test with coverage
