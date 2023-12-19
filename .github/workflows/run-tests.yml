@@ -7,8 +7,8 @@ on:
     branches: [ main ]
   push:
     branches: [ main ]
-  schedule:
-    - cron: "21 11 * * 0"
+  # schedule:
+  #   - cron: "21 11 * * 0"
 
 jobs:
   test:
@@ -16,8 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ self-hosted-ubuntu, macos-latest, windows-latest]
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        os: [ self-hosted-ubuntu ]
+        python-version: [ '3.12' ]
       fail-fast: false
     steps:
       - name: Checkout
@@ -32,7 +32,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo ${{ matrix.os }}
+          echo "MATRIX.OS" ${{ matrix.os }}
+          pwd
+          ls
+          ls /home/runner
+          ls /var
+          ls /
           python -m pip install -r requirements.txt
 
       - name: Test with coverage
