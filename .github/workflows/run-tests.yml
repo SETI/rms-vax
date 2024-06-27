@@ -11,13 +11,27 @@ on:
     - cron: "21 11 * * 0"
 
 jobs:
+  flake8:
+    name: Flake8 vax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Flake8
+        run: |
+          pip install flake8
+          flake8 vax tests
+
   test:
     name: Test vax
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
       fail-fast: false
     steps:
       - name: Checkout

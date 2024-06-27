@@ -2,42 +2,53 @@
 # vax/__init__.py
 ################################################################################
 """PDS Ring-Moon Systems Node, SETI Institute
-Vax Floating-Point Conversion Tools
 
-Functions to convert between Vax single- and double-precision floats and IEEE
-floats.
+Functions to convert between VAX single- and double-precision floats and IEEE floats.
+Conversions to/from VAX single precision are supported. However, only conversion from VAX
+doubles to IEEE doubles is supported, not the reverse.
 
 This module continues to support Python 2 in addition to Python 3.
 
-Conversions to/from Vax single precision is supported. However, only conversions
-from Vax doubles to IEEE doubles are supported, not the reverse.
+Conversions to/from VAX single precision is supported. However, only conversions from VAX
+doubles to IEEE doubles are supported, not the reverse.
 """
+
+__all__ = ['from_vax32', 'to_vax32_bytes', 'to_vax32', 'from_vax64']
 
 import numpy as np
 import sys
 
 try:
     from ._version import __version__
-except ImportError as err:
+except ImportError:
     __version__ = 'Version unspecified'
 
 _PYTHON2 = sys.version_info.major <= 2
 
 
 def from_vax32(data):
-    """Interpret this byte string, array, or array-like as Vax float32 or
-    complex64 values and return the equivalent single-precision IEEE value(s).
+    """Return equivalent single-precision IEEE value for VAX representation.
 
-    If the input is an array, the shape of that array is preserved except for
-    the last axis, which may be modified account for the new itemsize.
+    Given a byte string, array, or array-like (something that can be converted to a numpy
+    array), interpet it as VAX float32 or complex64 values and return the equivalent
+    single-precision IEEE value(s).
 
-    If the input array is complex, the returned array will have dtype "<c8";
-    otherwise, it will have dtype "<f4".
+    Args:
+        data (bytes or bytearray or memoryview or str or numpy array-like):
+            The input data.
+
+            If the input is an array, the shape of that array is preserved except for the
+            last axis, which may be modified to account for the new itemsize.
+
+    Returns:
+        np.array or np.float32 or np.complex64:
+            The interpreted IEEE value. If the input array is complex, the returned array
+            will have dtype "<c8"; otherwise, it will have dtype "<f4".
     """
 
     # Convert a string to bytes; also handle a Python 2 buffer
     if _PYTHON2:
-        if isinstance(data, (str, buffer)):     # pragma: no cover
+        if isinstance(data, (str, buffer)):     # pragma: no cover  # noqa: F821
             data = bytes(data)
     else:
         if isinstance(data, str):
@@ -83,7 +94,7 @@ def from_vax32(data):
                                  'input: ' + str(array.dtype))
 
         # Determine array shape after conversion
-        if array.itemsize in (1,2):
+        if array.itemsize in (1, 2):
             if (array.shape[-1] * array.itemsize) % 4 != 0:
                 raise ValueError('last axis size is not a multiple of 4 bytes')
 
@@ -108,7 +119,7 @@ def from_vax32(data):
     # IEEE:   seeeeeeeemm_m0_m mmmmmmm_m1_mmmmm
     pairs = array.view(dtype='u2')
     pairs = pairs.reshape(-1, 2)
-    swapped = pairs[:,::-1].copy()
+    swapped = pairs[:, ::-1].copy()
     swapped = swapped.reshape(-1, itemsize//2)
     # The sign, exponent, and mantissa are now aligned with IEEE layout
 
@@ -116,7 +127,7 @@ def from_vax32(data):
     ieee = swapped.view(dtype=dtype) / 4.
 
     if scalar:
-        return ieee[0,0]                # current shape is (1,1)
+        return ieee[0, 0]                # current shape is (1,1)
     elif shapeless:
         return ieee.reshape(())
     else:
@@ -124,9 +135,16 @@ def from_vax32(data):
 
 
 def to_vax32_bytes(array):
-    """Convert this number, array, or array-like into a byte string containing
-    the binary representation of the equivalent Vax float32 or complex64
-    value(s).
+    """Return equivalent VAX representation for value(s) as bytes.
+
+    Convert this number, array, or array-like into a byte string containing the binary
+    representation of the equivalent VAX float32 or complex64 value(s).
+
+    Args:
+        array (numpy array-like): The input data.
+
+    Returns:
+        bytes: The VAX representation for the value(s).
     """
 
     # Make array contiguous, with C index order, containing 4-byte IEEE floats
@@ -136,22 +154,30 @@ def to_vax32_bytes(array):
     # Conversion involves multiplication by 4 and then a pairwise byte swap
     paired_view = (4. * np.atleast_1d(array)).view('u2')
     paired_view = paired_view.reshape(-1, 2)
-    swapped = paired_view[:,::-1].copy()
+    swapped = paired_view[:, ::-1].copy()
 
     return swapped.tobytes()
 
 
 def to_vax32(array):
-    """Convert this number, array, or array-like into an array of Vax float32 or
-    complex64 values with the same shape.
+    """Return equivalent VAX representation for value(s) as numpy array.
 
-    If the input is a scalar, the returned object is an array of shape ().
+    Convert this number, array, or array-like into an array of VAX float32 or complex64
+    values with the same shape.
 
-    If the input is complex, the returned array will be of dtype "<c8";
-    otherwise, it will be of dtype "<f4".
+    Args:
+        array (numpy array-like): The input data
 
-    Note that this object will not be usable for arithmetic operations in its
-    returned form.
+    Returns:
+        np.array: The VAX representation of the value(s) stored in a numpy array.
+
+            If the input is a scalar, the returned object is an array of shape ().
+
+            If the input is complex, the returned array will be of dtype "<c8"; otherwise,
+            it will be of dtype "<f4".
+
+            Note that this object will not be usable for arithmetic operations in its
+            returned form.
     """
 
     # Make array contiguous, with C index order, containing 4-byte IEEE floats
@@ -168,24 +194,34 @@ def to_vax32(array):
     else:
         return result
 
+
 ################################################################################
 # 64-bit support: read-only
 ################################################################################
 
 def from_vax64(data):
-    """Interpret this byte string, array, or array-like as Vax float64 or
-    complex128 values and return the equivalent single-precision IEEE value(s).
+    """Return equivalent double-precision IEEE value for VAX representation.
 
-    If the input is an array, the shape of that array is preserved except for
-    the last axis, which may be modified account for the new itemsize.
+    Given a byte string, array, or array-like (something that can be converted to a numpy
+    array), interpet it as VAX float64 or complex128 values and return the equivalent
+    double-precision IEEE value(s).
 
-    If the input array is complex, the returned array will have dtype "<c16";
-    otherwise, it will have dtype "<f8".
+    Args:
+        data (bytes or bytearray or memoryview or str or numpy array-like):
+            The input data.
+
+            If the input is an array, the shape of that array is preserved except for the
+            last axis, which may be modified to account for the new itemsize.
+
+    Returns:
+        np.array or np.float64 or np.complex128:
+            The interpreted IEEE value. If the input array is complex, the returned array
+            will have dtype "<c16"; otherwise, it will have dtype "<f8".
     """
 
     # Convert a string to bytes; also handle a Python 2 buffer
     if _PYTHON2:
-        if isinstance(data, (str, buffer)):     # pragma: no cover
+        if isinstance(data, (str, buffer)):     # pragma: no cover  # noqa: F821
             data = bytes(data)
     else:
         if isinstance(data, str):
@@ -246,7 +282,7 @@ def from_vax64(data):
     # having the lowest memory address
     pairs = array.view(dtype='uint8')
     pairs = pairs.reshape(-1, 2)
-    swapped = pairs[:,::-1].copy()
+    swapped = pairs[:, ::-1].copy()
     # Now we can treat each value as an 8-byte item in MSB order
 
     # IEEE has three extra bits of exponent, so we need to shift these values to
@@ -258,14 +294,14 @@ def from_vax64(data):
 
     # Correct the exponent's biases
     mask = (vals >= 0)
-    vals[ mask] += 0x37e0000000000000
+    vals[ mask] += 0x37e0000000000000  # noqa: E201
     vals[~mask] -= 0x3820000000000000
 
     vals = vals.reshape(-1, itemsize//8)
     ieee = vals.view(dtype)
 
     if scalar:
-        return ieee[0,0]                # current shape is (1,1)
+        return ieee[0, 0]                # current shape is (1,1)
     elif shapeless:
         return ieee.reshape(())
     else:
